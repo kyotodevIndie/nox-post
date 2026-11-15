@@ -1,0 +1,34 @@
+{
+  "name": "nox-postiz-api",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "description": "API de publicação em redes sociais (Instagram, Facebook, LinkedIn, YouTube, TikTok) para os SaaS da Nox. Providers adaptados do Postiz.",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "packageManager": "pnpm@11.22.0",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "node --import tsx/esm src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run tests/unit",
+    "test:pg": "vitest run tests/pg",
+    "migrate": "tsx scripts/migrate.ts",
+    "tenant:create": "tsx scripts/create-tenant.ts"
+  },
+  "dependencies": {
+    "@fastify/helmet": "^13.2.0",
+    "@fastify/rate-limit": "^11.2.1",
+    "dotenv": "^16.4.5",
+    "fastify": "^5.12.7",
+    "pg": "^8.11.5",
+    "tsx": "^4.11.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.11.6",
+    "typescript": "^5.4.5",
+    "vitest": "^5.0.0"
+  }
+}

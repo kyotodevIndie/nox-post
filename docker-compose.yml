@@ -1,0 +1,35 @@
+# Ambiente LOCAL de desenvolvimento (não é produção; produção em deploy/). `docker compose up -d postgres`
+# e depois `pnpm migrate && pnpm dev`, ou tudo em container com `docker compose up --build`.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: npa
+      POSTGRES_PASSWORD: npa_dev
+      POSTGRES_DB: npa
+    ports: ["127.0.0.1:5450:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U npa -d npa"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build: .
+    profiles: [full]
+    environment:
+      DATABASE_URL: postgresql://npa:npa_dev@postgres:5432/npa
+      SECRETS_KEY: dev-only-0123456789abcdef0123456789abcdef
+      ADMIN_TOKEN: dev-only-admin-0123456789abcdef0123456789
+      PUBLIC_URL: http://localhost:3500
+      MEDIA_DIR: /data/media
+    command: ["sh", "-c", "node --import tsx/esm scripts/migrate.ts && node --import tsx/esm src/server.ts"]
+    ports: ["3500:3500"]
+    volumes: [media:/data/media]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+volumes:
+  pgdata:
+  media:
