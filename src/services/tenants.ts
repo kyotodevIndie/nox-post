@@ -4,7 +4,7 @@ import { AppError } from '../lib/errors'
 import { newSecret, seal } from '../security/secretBox'
 import { sha256hex } from '../security/signature'
 
-// Tenants = sistemas que usam a API (suíte social, DarkHub...). A chave começa com pnox_ e só é mostrada na criação.
+// Tenants = sistemas que usam a API (Creatia, DarkHub...). A chave começa com pnox_ e só é mostrada na criação.
 
 export const newApiKey = () => 'pnox_' + randomBytes(32).toString('base64url')
 
