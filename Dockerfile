@@ -6,6 +6,7 @@ RUN pnpm install --frozen-lockfile --prod=false
 COPY src ./src
 COPY scripts ./scripts
 COPY migrations ./migrations
+COPY assets ./assets
 COPY tsconfig.json ./
 RUN mkdir -p /data/media && chown node:node /data/media
 ENV MEDIA_DIR=/data/media

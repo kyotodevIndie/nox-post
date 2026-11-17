@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/nox-post.png">
+    <img src="assets/brand/nox-post-escuro.png" alt="nox-post" width="280">
+  </picture>
+</p>
+
 # nox-post
 
 API que publica e agenda posts no **Instagram, Facebook, LinkedIn (perfil e página), YouTube e TikTok**. É só a API:
@@ -93,3 +100,5 @@ Mídia fica no volume `nox-post_media`. Backups do banco em `/opt/nox-post/backu
 AGPL-3.0 (arquivo [LICENSE](LICENSE)); origem do código adaptado em [NOTICE](NOTICE). Quem usa esta API
 modificada pela rede tem direito ao código-fonte: este repositório é público por isso. Os apps que só chamam a API
 por HTTP não são afetados.
+
+A logo e o símbolo em [assets/brand](assets/brand) são marcas da Nox e não fazem parte da licença do código.
