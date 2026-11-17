@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # Deploy do post-nox na VPS: builda a imagem aqui, manda por SSH (docker save | load), faz backup do banco,
 # roda as migrations e recria a stack "post-nox". Mesmo esquema do Nox.
-# Pré-requisitos: `ssh $POSTNOX_HOST` funcionando, rede docker "proxy" (caddy-docker-proxy) e /root/post-nox-deploy/stack.env
-# no servidor (modelo em deploy/stack.env.example). Uso: POSTNOX_HOST=minha-vps bash deploy/vps-deploy.sh
+# Pré-requisitos: `ssh $POSTNOX_HOST` funcionando (usuário deploy, grupo docker), rede docker "proxy" (caddy-docker-proxy),
+# a pasta /opt/nox-postiz-api do usuário deploy e o stack.env dentro dela (modelo em deploy/stack.env.example).
+# Uso: bash deploy/vps-deploy.sh (ou POSTNOX_HOST=outra-vps)
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-HOST="${POSTNOX_HOST:-hera-vps}"
-DIR=/root/post-nox-deploy
+HOST="${POSTNOX_HOST:-saas-vps}"
+DIR=/opt/nox-postiz-api
 SHA="$(git rev-parse --short HEAD)"
 [ -z "$(git status --porcelain)" ] || { echo "Há mudanças não commitadas; commite antes." >&2; exit 1; }
 
@@ -16,7 +17,7 @@ docker build -q -t "post-nox:$SHA" .
 
 echo "→ enviando imagem"
 docker save "post-nox:$SHA" | gzip -1 | ssh "$HOST" 'gunzip | docker load' >/dev/null
-ssh "$HOST" "mkdir -p $DIR"
+ssh "$HOST" "test -w $DIR" || { echo "$HOST:$DIR não existe ou não é do usuário do ssh" >&2; exit 1; }
 scp -q deploy/docker-compose.yml deploy/docker-compose.caddy.yml "$HOST:$DIR/"
 
 ssh "$HOST" SHA="$SHA" DIR="$DIR" bash -s <<'REMOTE'
@@ -33,10 +34,10 @@ DC="docker compose -p post-nox --env-file $ENV $FILES"
 $DC up -d --pull never postgres
 for i in $(seq 1 30); do [ "$(docker inspect -f '{{.State.Health.Status}}' post-nox-postgres-1)" = healthy ] && break; sleep 2; done
 
-mkdir -p /root/backups
+mkdir -p $DIR/backups
 echo "→ backup"
-docker exec post-nox-postgres-1 pg_dump -U postnox -d postnox -Fc > /root/backups/post-nox-$(date +%Y%m%d-%H%M)-$SHA.dump
-ls -1t /root/backups/post-nox-*.dump | tail -n +15 | xargs -r rm --
+docker exec post-nox-postgres-1 pg_dump -U postnox -d postnox -Fc > $DIR/backups/post-nox-$(date +%Y%m%d-%H%M)-$SHA.dump
+ls -1t $DIR/backups/post-nox-*.dump | tail -n +15 | xargs -r rm --
 
 echo "→ migrations"
 set -a; . $ENV; set +a

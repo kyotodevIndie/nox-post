@@ -1,9 +1,13 @@
-# Produção na VPS (stack "post-nox"). Variáveis em /root/post-nox-deploy/stack.env (chmod 600), nunca no git.
-# Imagem construída no notebook e carregada por SSH (deploy/vps-deploy.sh); nada é puxado de registry.
+# Produção na VPS (stack "post-nox", pasta /opt/nox-postiz-api). Variáveis em /opt/nox-postiz-api/stack.env (chmod 600),
+# nunca no git. Imagem construída no notebook e carregada por SSH (deploy/vps-deploy.sh); nada é puxado de registry.
+# Regras da VPS (/opt/README.md): nenhum `ports:`, limites por serviço, só a api (a porta de entrada) na rede "proxy".
+name: post-nox
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    mem_limit: 384m
+    cpus: 0.5
     environment:
       POSTGRES_USER: postnox
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
@@ -18,6 +22,9 @@ services:
   api:
     image: post-nox:${POSTNOX_TAG:?}
     restart: unless-stopped
+    mem_limit: 512m
+    cpus: 1.0
+    expose: ["3500"]
     environment:
       NODE_ENV: production
       TRUST_PROXY: "1"

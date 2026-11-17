@@ -79,14 +79,14 @@ Pendências que dependem das redes, não de código:
 Mesmo esquema do Nox: a imagem é construída aqui e enviada por SSH, com Postgres próprio e rota no
 caddy-docker-proxy.
 
-1. No servidor: crie `/root/post-nox-deploy/stack.env` a partir de [deploy/stack.env.example](deploy/stack.env.example)
+1. No servidor (usuário `deploy`, alias `saas-vps`): crie `/opt/nox-postiz-api/stack.env` a partir de [deploy/stack.env.example](deploy/stack.env.example)
    (`chmod 600`). Gere os segredos com `openssl rand -base64 48`. Confirme que a rede docker `proxy` existe.
 2. Aponte o DNS de `POSTNOX_DOMAIN` para a VPS.
-3. Aqui: `POSTNOX_HOST=<alias ssh> bash deploy/vps-deploy.sh` (padrão `hera-vps`). O script faz build, backup do banco,
+3. Aqui: `POSTNOX_HOST=<alias ssh> bash deploy/vps-deploy.sh` (padrão `saas-vps`). O script faz build, backup do banco,
    migrations e sobe a stack `post-nox`.
 4. Crie o tenant: `curl -X POST https://<dominio>/admin/tenants -H "Authorization: Bearer $ADMIN_TOKEN" -H 'content-type: application/json' -d '{"name":"Suíte social","webhookUrl":"https://..."}'`.
 
-Mídia fica no volume `postnox_media`. Backups do banco em `/root/backups/post-nox-*.dump` (últimos 14).
+Mídia fica no volume `post-nox_media`. Backups do banco em `/opt/nox-postiz-api/backups/post-nox-*.dump` (últimos 14).
 
 ## Licença
 
