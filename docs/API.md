@@ -1,6 +1,6 @@
 # nox-post: contrato da API
 
-API de publicação em redes sociais para os nossos SaaS (suíte social, DarkHub...). Cada SaaS é um **tenant**: tem
+API de publicação em redes sociais para os nossos SaaS (Creatia, DarkHub...). Cada SaaS é um **tenant**: tem
 uma chave de API, conecta os canais dos clientes dele, agenda posts e recebe webhooks quando o post sai ou falha.
 
 Base: `https://<api>`. JSON UTF-8. Datas em ISO 8601 com fuso (`2026-11-20T12:00:00-03:00`).

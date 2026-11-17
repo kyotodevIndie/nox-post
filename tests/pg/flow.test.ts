@@ -109,7 +109,13 @@ describe('fluxo completo', () => {
     expect(JSON.stringify(list)).not.toContain('tok-abc')
 
     // state é de uso único
-    expect((await app.inject({ method: 'GET', url: `/oauth/facebook/callback?code=abc&state=${st}` })).statusCode).toBe(400)
+    const reused = await app.inject({ method: 'GET', url: `/oauth/facebook/callback?code=abc&state=${st}` })
+    expect(reused.statusCode).toBe(400)
+    expect(reused.body).toContain('/brand/nox-post.png')
+    for (const path of ['/favicon.png', '/apple-touch-icon.png', '/brand/nox-post.png', '/brand/nox-simbolo.png']) {
+      const r = await app.inject({ method: 'GET', url: path })
+      expect([r.statusCode, r.headers['content-type'], r.rawPayload.subarray(1, 4).toString()]).toEqual([200, 'image/png', 'PNG'])
+    }
     const ev = (await pool.query(`SELECT type FROM outbound_events`)).rows
     expect(ev.map((e) => e.type)).toEqual(['channel.connected'])
   })
