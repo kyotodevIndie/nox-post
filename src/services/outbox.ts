@@ -35,7 +35,7 @@ export async function deliverDue(pool: Pool, opts: { fetch?: FetchLike; limit?: 
           const res = await doFetch(ev.webhook_url, {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json', 'User-Agent': 'post-nox/1',
+              'Content-Type': 'application/json', 'User-Agent': 'nox-post/1',
               'X-Nox-Event-Id': ev.id, 'X-Nox-Timestamp': ts, 'X-Nox-Signature': signWebhook(open(ev.webhook_secret_enc), ts, body),
             },
             body, signal: AbortSignal.timeout(10_000),

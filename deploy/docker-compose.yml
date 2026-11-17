@@ -1,7 +1,7 @@
-# Produção na VPS (stack "post-nox", pasta /opt/nox-postiz-api). Variáveis em /opt/nox-postiz-api/stack.env (chmod 600),
+# Produção na VPS (stack "nox-post", pasta /opt/nox-post). Variáveis em /opt/nox-post/stack.env (chmod 600),
 # nunca no git. Imagem construída no notebook e carregada por SSH (deploy/vps-deploy.sh); nada é puxado de registry.
 # Regras da VPS (/opt/README.md): nenhum `ports:`, limites por serviço, só a api (a porta de entrada) na rede "proxy".
-name: post-nox
+name: nox-post
 services:
   postgres:
     image: postgres:16-alpine
@@ -9,18 +9,18 @@ services:
     mem_limit: 384m
     cpus: 0.5
     environment:
-      POSTGRES_USER: postnox
+      POSTGRES_USER: noxpost
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
-      POSTGRES_DB: postnox
+      POSTGRES_DB: noxpost
     volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postnox -d postnox"]
+      test: ["CMD-SHELL", "pg_isready -U noxpost -d noxpost"]
       interval: 5s
       timeout: 3s
       retries: 30
 
   api:
-    image: post-nox:${POSTNOX_TAG:?}
+    image: nox-post:${NOX_POST_TAG:?}
     restart: unless-stopped
     mem_limit: 512m
     cpus: 1.0
@@ -29,7 +29,7 @@ services:
       NODE_ENV: production
       TRUST_PROXY: "1"
       PORT: "3500"
-      DATABASE_URL: postgresql://postnox:${POSTGRES_PASSWORD:?}@postgres:5432/postnox
+      DATABASE_URL: postgresql://noxpost:${POSTGRES_PASSWORD:?}@postgres:5432/noxpost
       PUBLIC_URL: ${PUBLIC_URL:?}
       SECRETS_KEY: ${SECRETS_KEY:?}
       ADMIN_TOKEN: ${ADMIN_TOKEN:?}

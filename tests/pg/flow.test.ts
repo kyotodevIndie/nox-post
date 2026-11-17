@@ -61,7 +61,7 @@ beforeAll(async () => {
   process.env.ADMIN_TOKEN = ADMIN
   process.env.SECRETS_KEY ??= 'test-0123456789abcdef0123456789abcdef'
   process.env.PUBLIC_URL = 'https://api.test'
-  process.env.MEDIA_DIR = mkdtempSync(join(tmpdir(), 'post-nox-media-'))
+  process.env.MEDIA_DIR = mkdtempSync(join(tmpdir(), 'nox-post-media-'))
   setProviders([fake])
   pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
   app = await buildApp({ pool, logger: false })

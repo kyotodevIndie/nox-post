@@ -4,13 +4,13 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: postnox
-      POSTGRES_PASSWORD: postnox_dev
-      POSTGRES_DB: postnox
+      POSTGRES_USER: noxpost
+      POSTGRES_PASSWORD: noxpost_dev
+      POSTGRES_DB: noxpost
     ports: ["127.0.0.1:5450:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postnox -d postnox"]
+      test: ["CMD-SHELL", "pg_isready -U noxpost -d noxpost"]
       interval: 2s
       timeout: 3s
       retries: 30
@@ -19,7 +19,7 @@ services:
     build: .
     profiles: [full]
     environment:
-      DATABASE_URL: postgresql://postnox:postnox_dev@postgres:5432/postnox
+      DATABASE_URL: postgresql://noxpost:noxpost_dev@postgres:5432/noxpost
       SECRETS_KEY: dev-only-0123456789abcdef0123456789abcdef
       ADMIN_TOKEN: dev-only-admin-0123456789abcdef0123456789
       PUBLIC_URL: http://localhost:3500

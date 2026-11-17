@@ -1,4 +1,4 @@
-# post-nox: contrato da API
+# nox-post: contrato da API
 
 API de publicação em redes sociais para os nossos SaaS (suíte social, DarkHub...). Cada SaaS é um **tenant**: tem
 uma chave de API, conecta os canais dos clientes dele, agenda posts e recebe webhooks quando o post sai ou falha.

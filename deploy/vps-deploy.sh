@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
-# Deploy do post-nox na VPS: builda a imagem aqui, manda por SSH (docker save | load), faz backup do banco,
-# roda as migrations e recria a stack "post-nox". Mesmo esquema do Nox.
-# Pré-requisitos: `ssh $POSTNOX_HOST` funcionando (usuário deploy, grupo docker), rede docker "proxy" (caddy-docker-proxy),
-# a pasta /opt/nox-postiz-api do usuário deploy e o stack.env dentro dela (modelo em deploy/stack.env.example).
-# Uso: bash deploy/vps-deploy.sh (ou POSTNOX_HOST=outra-vps)
+# Deploy do nox-post na VPS: builda a imagem aqui, manda por SSH (docker save | load), faz backup do banco,
+# roda as migrations e recria a stack "nox-post". Mesmo esquema do Nox.
+# Pré-requisitos: `ssh $NOX_POST_HOST` funcionando (usuário deploy, grupo docker), rede docker "proxy" (caddy-docker-proxy),
+# a pasta /opt/nox-post do usuário deploy e o stack.env dentro dela (modelo em deploy/stack.env.example).
+# Uso: bash deploy/vps-deploy.sh (ou NOX_POST_HOST=outra-vps)
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-HOST="${POSTNOX_HOST:-saas-vps}"
-DIR=/opt/nox-postiz-api
+HOST="${NOX_POST_HOST:-saas-vps}"
+DIR=/opt/nox-post
 SHA="$(git rev-parse --short HEAD)"
 [ -z "$(git status --porcelain)" ] || { echo "Há mudanças não commitadas; commite antes." >&2; exit 1; }
 
 echo "→ build $SHA"
-docker build -q -t "post-nox:$SHA" .
+docker build -q -t "nox-post:$SHA" .
 
 echo "→ enviando imagem"
-docker save "post-nox:$SHA" | gzip -1 | ssh "$HOST" 'gunzip | docker load' >/dev/null
+docker save "nox-post:$SHA" | gzip -1 | ssh "$HOST" 'gunzip | docker load' >/dev/null
 ssh "$HOST" "test -w $DIR" || { echo "$HOST:$DIR não existe ou não é do usuário do ssh" >&2; exit 1; }
 scp -q deploy/docker-compose.yml deploy/docker-compose.caddy.yml "$HOST:$DIR/"
 
@@ -25,32 +25,34 @@ set -euo pipefail
 ENV=$DIR/stack.env
 [ -f $ENV ] || { echo "falta $ENV (modelo em deploy/stack.env.example)" >&2; exit 1; }
 cd $DIR
-sed -i "s/^POSTNOX_TAG=.*/POSTNOX_TAG=$SHA/" $ENV
-grep -q '^POSTNOX_TAG=' $ENV || echo "POSTNOX_TAG=$SHA" >> $ENV
+# stack.env do nome antigo (post-nox): troca o prefixo POSTNOX_ por NOX_POST_ uma vez
+sed -i 's/^POSTNOX_/NOX_POST_/' $ENV
+sed -i "s/^NOX_POST_TAG=.*/NOX_POST_TAG=$SHA/" $ENV
+grep -q '^NOX_POST_TAG=' $ENV || echo "NOX_POST_TAG=$SHA" >> $ENV
 FILES="-f docker-compose.yml"
-grep -q '^POSTNOX_DOMAIN=.\+' $ENV && FILES="$FILES -f docker-compose.caddy.yml"
-DC="docker compose -p post-nox --env-file $ENV $FILES"
+grep -q '^NOX_POST_DOMAIN=.\+' $ENV && FILES="$FILES -f docker-compose.caddy.yml"
+DC="docker compose -p nox-post --env-file $ENV $FILES"
 
 $DC up -d --pull never postgres
-for i in $(seq 1 30); do [ "$(docker inspect -f '{{.State.Health.Status}}' post-nox-postgres-1)" = healthy ] && break; sleep 2; done
+for i in $(seq 1 30); do [ "$(docker inspect -f '{{.State.Health.Status}}' nox-post-postgres-1)" = healthy ] && break; sleep 2; done
 
 mkdir -p $DIR/backups
 echo "→ backup"
-docker exec post-nox-postgres-1 pg_dump -U postnox -d postnox -Fc > $DIR/backups/post-nox-$(date +%Y%m%d-%H%M)-$SHA.dump
-ls -1t $DIR/backups/post-nox-*.dump | tail -n +15 | xargs -r rm --
+docker exec nox-post-postgres-1 pg_dump -U noxpost -d noxpost -Fc > $DIR/backups/nox-post-$(date +%Y%m%d-%H%M)-$SHA.dump
+ls -1t $DIR/backups/nox-post-*.dump | tail -n +15 | xargs -r rm --
 
 echo "→ migrations"
 set -a; . $ENV; set +a
-docker run --rm --network post-nox_default \
-  -e DATABASE_URL="postgresql://postnox:$POSTGRES_PASSWORD@postgres:5432/postnox" \
-  "post-nox:$SHA" node --import tsx/esm scripts/migrate.ts
+docker run --rm --network nox-post_default \
+  -e DATABASE_URL="postgresql://noxpost:$POSTGRES_PASSWORD@postgres:5432/noxpost" \
+  "nox-post:$SHA" node --import tsx/esm scripts/migrate.ts
 
 echo "→ subindo"
 $DC up -d --pull never
 for i in $(seq 1 30); do
-  [ "$(docker inspect -f '{{.State.Health.Status}}' post-nox-api-1)" = healthy ] && { echo "✔ api saudável ($SHA)"; break; }
+  [ "$(docker inspect -f '{{.State.Health.Status}}' nox-post-api-1)" = healthy ] && { echo "✔ api saudável ($SHA)"; break; }
   sleep 3
 done
-[ "$(docker inspect -f '{{.State.Health.Status}}' post-nox-api-1)" = healthy ] || { docker logs --tail 20 post-nox-api-1; exit 1; }
+[ "$(docker inspect -f '{{.State.Health.Status}}' nox-post-api-1)" = healthy ] || { docker logs --tail 20 nox-post-api-1; exit 1; }
 docker image prune -f >/dev/null
 REMOTE
