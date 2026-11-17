@@ -12,7 +12,7 @@ const bearer = (req: FastifyRequest) => {
   return typeof h === 'string' && h.startsWith('Bearer ') ? h.slice(7).trim() : undefined
 }
 
-/** Authorization: Bearer npa_... (chave do tenant). */
+/** Authorization: Bearer pnox_... (chave do tenant). */
 export async function requireTenant(req: FastifyRequest, _reply: FastifyReply) {
   const key = bearer(req)
   const tenant = key ? await tenantByKey(req.server.db, key) : null

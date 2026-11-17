@@ -4,9 +4,9 @@ import { AppError } from '../lib/errors'
 import { newSecret, seal } from '../security/secretBox'
 import { sha256hex } from '../security/signature'
 
-// Tenants = sistemas que usam a API (suíte social, DarkHub...). A chave começa com npa_ e só é mostrada na criação.
+// Tenants = sistemas que usam a API (suíte social, DarkHub...). A chave começa com pnox_ e só é mostrada na criação.
 
-export const newApiKey = () => 'npa_' + randomBytes(32).toString('base64url')
+export const newApiKey = () => 'pnox_' + randomBytes(32).toString('base64url')
 
 export const tenantView = (t: any) => ({
   id: t.id, name: t.name, webhookUrl: t.webhook_url, oauthReturnUrl: t.oauth_return_url, active: t.active, createdAt: t.created_at,
@@ -48,6 +48,6 @@ export async function rotateTenant(db: Db, id: string, p: { webhookSecret?: bool
 }
 
 export async function tenantByKey(db: Db, apiKey: string) {
-  if (!apiKey.startsWith('npa_')) return null
+  if (!apiKey.startsWith('pnox_')) return null
   return (await db.query('SELECT * FROM tenants WHERE api_key_hash = $1 AND active', [sha256hex(apiKey)])).rows[0] ?? null
 }

@@ -1,4 +1,4 @@
--- Base do nox-postiz-api: tenants (SaaS que chamam a API), canais conectados, mídia, posts e webhooks de saída.
+-- Base do post-nox: tenants (SaaS que chamam a API), canais conectados, mídia, posts e webhooks de saída.
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 

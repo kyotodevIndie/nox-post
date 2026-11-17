@@ -61,7 +61,7 @@ beforeAll(async () => {
   process.env.ADMIN_TOKEN = ADMIN
   process.env.SECRETS_KEY ??= 'test-0123456789abcdef0123456789abcdef'
   process.env.PUBLIC_URL = 'https://api.test'
-  process.env.MEDIA_DIR = mkdtempSync(join(tmpdir(), 'npa-media-'))
+  process.env.MEDIA_DIR = mkdtempSync(join(tmpdir(), 'post-nox-media-'))
   setProviders([fake])
   pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
   app = await buildApp({ pool, logger: false })
@@ -92,7 +92,7 @@ async function connect(ref = 'persona-1') {
 describe('fluxo completo', () => {
   it('admin exige token e tenant exige chave', async () => {
     expect((await app.inject({ method: 'GET', url: '/admin/tenants' })).statusCode).toBe(401)
-    expect((await app.inject({ method: 'GET', url: '/v1/channels', headers: { authorization: 'Bearer npa_errada' } })).statusCode).toBe(401)
+    expect((await app.inject({ method: 'GET', url: '/v1/channels', headers: { authorization: 'Bearer pnox_errada' } })).statusCode).toBe(401)
   })
 
   it('conecta canais pelo OAuth e redireciona com os ids e o ref', async () => {

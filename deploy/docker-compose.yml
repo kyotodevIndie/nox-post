@@ -1,28 +1,28 @@
-# Produção na VPS (stack "npa"). Variáveis em /root/npa-deploy/stack.env (chmod 600), nunca no git.
+# Produção na VPS (stack "post-nox"). Variáveis em /root/post-nox-deploy/stack.env (chmod 600), nunca no git.
 # Imagem construída no notebook e carregada por SSH (deploy/vps-deploy.sh); nada é puxado de registry.
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: npa
+      POSTGRES_USER: postnox
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
-      POSTGRES_DB: npa
+      POSTGRES_DB: postnox
     volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U npa -d npa"]
+      test: ["CMD-SHELL", "pg_isready -U postnox -d postnox"]
       interval: 5s
       timeout: 3s
       retries: 30
 
   api:
-    image: nox-postiz-api:${NPA_TAG:?}
+    image: post-nox:${POSTNOX_TAG:?}
     restart: unless-stopped
     environment:
       NODE_ENV: production
       TRUST_PROXY: "1"
       PORT: "3500"
-      DATABASE_URL: postgresql://npa:${POSTGRES_PASSWORD:?}@postgres:5432/npa
+      DATABASE_URL: postgresql://postnox:${POSTGRES_PASSWORD:?}@postgres:5432/postnox
       PUBLIC_URL: ${PUBLIC_URL:?}
       SECRETS_KEY: ${SECRETS_KEY:?}
       ADMIN_TOKEN: ${ADMIN_TOKEN:?}

@@ -1,7 +1,7 @@
-# Rota pública no caddy-docker-proxy da VPS. Só entra quando NPA_DOMAIN está no stack.env (e o DNS já aponta).
+# Rota pública no caddy-docker-proxy da VPS. Só entra quando POSTNOX_DOMAIN está no stack.env (e o DNS já aponta).
 # Upload de vídeo pode passar de 100 MB: o Caddy não limita corpo por padrão.
 services:
   api:
     labels:
-      caddy: ${NPA_DOMAIN:?}
+      caddy: ${POSTNOX_DOMAIN:?}
       caddy.reverse_proxy: "{{upstreams 3500}}"

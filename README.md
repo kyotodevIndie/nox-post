@@ -1,4 +1,4 @@
-# nox-postiz-api
+# post-nox
 
 API que publica e agenda posts no **Instagram, Facebook, LinkedIn (perfil e página), YouTube e TikTok**. É só a API:
 os apps (suíte social, DarkHub...) conectam os canais dos clientes e mandam os posts por aqui.
@@ -22,7 +22,7 @@ pnpm dev                        # http://localhost:3500
 Criar um tenant (o app que vai usar a API):
 
 ```bash
-pnpm tenant:create "Suíte social" https://suite.local/webhooks/npa https://suite.local/canais
+pnpm tenant:create "Suíte social" https://suite.local/webhooks/postnox https://suite.local/canais
 ```
 
 Testes: `pnpm test` (unidade) e `pnpm test:pg` (fluxo completo no Postgres local; apaga os dados das tabelas).
@@ -79,14 +79,14 @@ Pendências que dependem das redes, não de código:
 Mesmo esquema do Nox: a imagem é construída aqui e enviada por SSH, com Postgres próprio e rota no
 caddy-docker-proxy.
 
-1. No servidor: crie `/root/npa-deploy/stack.env` a partir de [deploy/stack.env.example](deploy/stack.env.example)
+1. No servidor: crie `/root/post-nox-deploy/stack.env` a partir de [deploy/stack.env.example](deploy/stack.env.example)
    (`chmod 600`). Gere os segredos com `openssl rand -base64 48`. Confirme que a rede docker `proxy` existe.
-2. Aponte o DNS de `NPA_DOMAIN` para a VPS.
-3. Aqui: `NPA_HOST=<alias ssh> bash deploy/vps-deploy.sh` (padrão `hera-vps`). O script faz build, backup do banco,
-   migrations e sobe a stack `npa`.
+2. Aponte o DNS de `POSTNOX_DOMAIN` para a VPS.
+3. Aqui: `POSTNOX_HOST=<alias ssh> bash deploy/vps-deploy.sh` (padrão `hera-vps`). O script faz build, backup do banco,
+   migrations e sobe a stack `post-nox`.
 4. Crie o tenant: `curl -X POST https://<dominio>/admin/tenants -H "Authorization: Bearer $ADMIN_TOKEN" -H 'content-type: application/json' -d '{"name":"Suíte social","webhookUrl":"https://..."}'`.
 
-Mídia fica no volume `npa_media`. Backups do banco em `/root/backups/npa-*.dump` (últimos 14).
+Mídia fica no volume `postnox_media`. Backups do banco em `/root/backups/post-nox-*.dump` (últimos 14).
 
 ## Licença
 

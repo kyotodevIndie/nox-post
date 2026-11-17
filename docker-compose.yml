@@ -4,13 +4,13 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: npa
-      POSTGRES_PASSWORD: npa_dev
-      POSTGRES_DB: npa
+      POSTGRES_USER: postnox
+      POSTGRES_PASSWORD: postnox_dev
+      POSTGRES_DB: postnox
     ports: ["127.0.0.1:5450:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U npa -d npa"]
+      test: ["CMD-SHELL", "pg_isready -U postnox -d postnox"]
       interval: 2s
       timeout: 3s
       retries: 30
@@ -19,7 +19,7 @@ services:
     build: .
     profiles: [full]
     environment:
-      DATABASE_URL: postgresql://npa:npa_dev@postgres:5432/npa
+      DATABASE_URL: postgresql://postnox:postnox_dev@postgres:5432/postnox
       SECRETS_KEY: dev-only-0123456789abcdef0123456789abcdef
       ADMIN_TOKEN: dev-only-admin-0123456789abcdef0123456789
       PUBLIC_URL: http://localhost:3500
