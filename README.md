@@ -8,7 +8,7 @@
 # nox-post
 
 API que publica e agenda posts no **Instagram, Facebook, LinkedIn (perfil e página), YouTube e TikTok**. É só a API:
-os apps (suíte social, DarkHub...) conectam os canais dos clientes e mandam os posts por aqui.
+os apps (Creatia, DarkHub...) conectam os canais dos clientes e mandam os posts por aqui.
 
 As integrações com as redes são adaptadas do [Postiz](https://github.com/gitroomhq/postiz-app) (AGPL-3.0), sem
 NestJS, Prisma, Temporal, Redis ou Elasticsearch: um processo Node (Fastify) e um Postgres, rodando com ~200 MB.
@@ -29,7 +29,7 @@ pnpm dev                        # http://localhost:3500
 Criar um tenant (o app que vai usar a API):
 
 ```bash
-pnpm tenant:create "Suíte social" https://suite.local/webhooks/noxpost https://suite.local/canais
+pnpm tenant:create "Creatia" https://creatia.local/webhooks/noxpost https://creatia.local/canais
 ```
 
 Testes: `pnpm test` (unidade) e `pnpm test:pg` (fluxo completo no Postgres local; apaga os dados das tabelas).
@@ -91,7 +91,7 @@ caddy-docker-proxy.
 2. Aponte o DNS de `NOX_POST_DOMAIN` para a VPS.
 3. Aqui: `NOX_POST_HOST=<alias ssh> bash deploy/vps-deploy.sh` (padrão `saas-vps`). O script faz build, backup do banco,
    migrations e sobe a stack `nox-post`.
-4. Crie o tenant: `curl -X POST https://<dominio>/admin/tenants -H "Authorization: Bearer $ADMIN_TOKEN" -H 'content-type: application/json' -d '{"name":"Suíte social","webhookUrl":"https://..."}'`.
+4. Crie o tenant: `curl -X POST https://<dominio>/admin/tenants -H "Authorization: Bearer $ADMIN_TOKEN" -H 'content-type: application/json' -d '{"name":"Creatia","webhookUrl":"https://..."}'`.
 
 Mídia fica no volume `nox-post_media`. Backups do banco em `/opt/nox-post/backups/nox-post-*.dump` (últimos 14).
 
