@@ -72,6 +72,19 @@ O endereço de retorno de cada rede é `PUBLIC_URL/oauth/<network>/callback`. Em
 | YouTube | [console.cloud.google.com](https://console.cloud.google.com) → ativar *YouTube Data API v3*, tela de consentimento, credencial *Aplicativo da Web* | `/oauth/youtube/callback` | `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET` |
 | TikTok | [developers.tiktok.com](https://developers.tiktok.com) → *Login Kit* + *Content Posting API* (Direct Post) | `/oauth/tiktok/callback` | `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET` |
 
+### Troca de domínio
+
+Os callbacks saem do `PUBLIC_URL`, então trocar o domínio quebra o login das redes se os apps não souberem do endereço
+novo. A ordem é:
+
+1. Servir os dois domínios (`NOX_POST_DOMAIN_ALIASES` com o antigo).
+2. Em cada app, **adicionar** os callbacks novos sem apagar os antigos: `/oauth/facebook/callback` e
+   `/oauth/instagram/callback` (Meta), `/oauth/linkedin/callback` e `/oauth/linkedin-page/callback` (LinkedIn),
+   `/oauth/youtube/callback` (Google Cloud) e `/oauth/tiktok/callback` (TikTok, que também pede a verificação do domínio
+   novo).
+3. Trocar o `PUBLIC_URL` e reiniciar a API.
+4. Depois de um tempo sem uso, apagar os callbacks antigos e tirar o alias.
+
 Pendências que dependem das redes, não de código:
 
 - **Meta:** App Review das permissões (`pages_manage_posts`, `instagram_content_publish`, `business_management`...)
