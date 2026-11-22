@@ -1,0 +1,9 @@
+# Rota pública no caddy-docker-proxy da VPS. Só entra quando NOX_POST_DOMAIN está no stack.env (e o DNS já aponta).
+# Upload de vídeo pode passar de 100 MB: o Caddy não limita corpo por padrão.
+# NOX_POST_DOMAIN_ALIASES (opcional, separados por espaço): hosts extras servidos igual, em proxy e sem redirect
+# (callbacks de OAuth e chamadas de API não seguem redirect). Vazio: só o NOX_POST_DOMAIN, como antes.
+services:
+  api:
+    labels:
+      caddy: ${NOX_POST_DOMAIN:?}${NOX_POST_DOMAIN_ALIASES:+ ${NOX_POST_DOMAIN_ALIASES}}
+      caddy.reverse_proxy: "{{upstreams 3500}}"

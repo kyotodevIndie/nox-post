@@ -1,0 +1,17 @@
+nox-post
+Copyright (C) 2026 Thallys Morais
+
+Este programa é software livre sob a GNU Affero General Public License v3.0 (arquivo LICENSE).
+
+Partes do código são adaptadas do Postiz (https://github.com/gitroomhq/postiz-app, commit c22451b de
+14/11/2026), Copyright (C) Gitroom, licenciado sob a AGPL-3.0:
+
+- src/providers/meta.ts, facebook.ts, instagram.ts  ← libraries/nestjs-libraries/src/integrations/social/
+  facebook.provider.ts e instagram.provider.ts (OAuth, páginas, publicação, tabela de erros)
+- src/providers/linkedin.ts  ← linkedin.provider.ts e linkedin.page.provider.ts
+- src/providers/youtube.ts   ← youtube.provider.ts (tabela de erros, escolha de canal)
+- src/providers/tiktok.ts    ← tiktok.provider.ts (OAuth, plano de partes, status, leitura do id int64)
+- src/providers/http.ts      ← social.abstract.ts (fetch com retentativa e classificação de erros)
+
+As adaptações removem NestJS, Prisma e Temporal, trocam o fluxo de workflow por uma fila no Postgres e
+mudam a interface dos providers. O histórico do git registra cada mudança.

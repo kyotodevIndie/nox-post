@@ -1,0 +1,64 @@
+# Produção (stack "nox-post"). Variáveis em stack.env, na pasta da stack (chmod 600),
+# nunca no git. Imagem construída no notebook e carregada por SSH (deploy/vps-deploy.sh); nada é puxado de registry.
+# Regras da VPS (/opt/README.md): nenhum `ports:`, limites por serviço, só a api (a porta de entrada) na rede "proxy".
+name: nox-post
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    mem_limit: 384m
+    cpus: 0.5
+    environment:
+      POSTGRES_USER: noxpost
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: noxpost
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U noxpost -d noxpost"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  api:
+    image: nox-post:${NOX_POST_TAG:?}
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: 1.0
+    expose: ["3500"]
+    environment:
+      NODE_ENV: production
+      TRUST_PROXY: "1"
+      PORT: "3500"
+      DATABASE_URL: postgresql://noxpost:${POSTGRES_PASSWORD:?}@postgres:5432/noxpost
+      PUBLIC_URL: ${PUBLIC_URL:?}
+      SECRETS_KEY: ${SECRETS_KEY:?}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?}
+      MEDIA_DIR: /data/media
+      MEDIA_MAX_MB: ${MEDIA_MAX_MB:-1024}
+      NODE_OPTIONS: --max-old-space-size=256
+      # Vazias = rede desligada.
+      FACEBOOK_APP_ID: ${FACEBOOK_APP_ID:-}
+      FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET:-}
+      LINKEDIN_CLIENT_ID: ${LINKEDIN_CLIENT_ID:-}
+      LINKEDIN_CLIENT_SECRET: ${LINKEDIN_CLIENT_SECRET:-}
+      YOUTUBE_CLIENT_ID: ${YOUTUBE_CLIENT_ID:-}
+      YOUTUBE_CLIENT_SECRET: ${YOUTUBE_CLIENT_SECRET:-}
+      TIKTOK_CLIENT_KEY: ${TIKTOK_CLIENT_KEY:-}
+      TIKTOK_CLIENT_SECRET: ${TIKTOK_CLIENT_SECRET:-}
+    volumes: [media:/data/media]
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3500/health/ready >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks: [default, proxy]
+
+networks:
+  proxy:
+    external: true
+
+volumes:
+  pgdata:
+  media:
