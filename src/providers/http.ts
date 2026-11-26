@@ -71,3 +71,11 @@ export function requireScopes(required: string[], got: string | string[] | undef
   const missing = required.filter((s) => !list.includes(s))
   if (missing.length) throw new ProviderError('fatal', `${network}: faltaram permissões na autorização (${missing.join(', ')}). Conecte de novo e aceite todas.`)
 }
+
+/** Endereço base de instância informado pelo tenant (Mastodon, Lemmy, WordPress...): só HTTPS, sem barra no fim. */
+export function httpsBase(raw: string | undefined, field: string): string {
+  let u: URL
+  try { u = new URL(raw?.includes('://') ? raw : `https://${raw}`) } catch { throw new ProviderError('fatal', `${field} não é um endereço válido`) }
+  if (u.protocol !== 'https:') throw new ProviderError('fatal', `${field} precisa ser HTTPS`)
+  return `${u.origin}${u.pathname.replace(/\/+$/, '')}`
+}

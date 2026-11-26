@@ -28,3 +28,19 @@ export async function mediaChunk(url: string, start: number, end: number, cache?
   if (cache) cache.buf = buf
   return buf.subarray(start, end + 1)
 }
+
+const MIME: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', mp4: 'video/mp4', mov: 'video/quicktime', m4v: 'video/mp4', webm: 'video/webm' }
+
+export function fileName(url: string): string {
+  return decodeURIComponent(new URL(url).pathname.split('/').pop() || 'arquivo')
+}
+
+export function mimeOf(m: { url: string; type?: string }): string {
+  const ext = fileName(m.url).split('.').pop()?.toLowerCase() ?? ''
+  return MIME[ext] ?? (isVideo(m) ? 'video/mp4' : 'image/jpeg')
+}
+
+/** Baixa a mídia como Blob (para multipart). */
+export async function mediaBlob(m: { url: string; type?: string }): Promise<Blob> {
+  return new Blob([new Uint8Array(await mediaBuffer(m.url))], { type: mimeOf(m) })
+}

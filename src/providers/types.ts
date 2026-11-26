@@ -2,7 +2,11 @@
 // refreshToken / post / checkPostStatus / finalizePost), simplificado: o OAuth já devolve as contas
 // (páginas, perfis, canais) e o `check` avança o post (inclui o que o Postiz chama de finalizePost).
 
-export type Network = 'facebook' | 'instagram' | 'linkedin' | 'linkedin-page' | 'youtube' | 'tiktok'
+export type Network =
+  | 'facebook' | 'instagram' | 'linkedin' | 'linkedin-page' | 'youtube' | 'tiktok'
+  | 'x' | 'threads' | 'pinterest' | 'reddit' | 'gmb' | 'dribbble' | 'tumblr' | 'slack' | 'discord' | 'telegram'
+  | 'mastodon' | 'bluesky' | 'lemmy' | 'farcaster' | 'nostr' | 'vk' | 'kick' | 'twitch'
+  | 'devto' | 'medium' | 'hashnode' | 'wordpress'
 
 export interface MediaItem {
   url: string
@@ -51,8 +55,15 @@ export interface Provider {
   label: string
   /** Variáveis de ambiente obrigatórias; sem elas a rede fica desligada. */
   requiredEnv: string[]
-  authUrl(p: { state: string; redirectUri: string }): { url: string; codeVerifier?: string }
-  connect(p: { code: string; codeVerifier?: string; redirectUri: string }): Promise<ConnectedAccount[]>
+  /** Conexão por OAuth (authUrl + connect). `query` traz o resto dos parâmetros do callback (ex.: device_id do VK). */
+  authUrl?(p: { state: string; redirectUri: string }): { url: string; codeVerifier?: string }
+  connect?(p: { code: string; codeVerifier?: string; redirectUri: string; query?: Record<string, string> }): Promise<ConnectedAccount[]>
+  /**
+   * Conexão por credenciais (token de API, instância, senha de app, webhook), para redes sem OAuth ou com OAuth por
+   * instância. `credentialFields` lista os campos aceitos em POST /v1/channels/connect `credentials`.
+   */
+  credentialFields?: string[]
+  connectWith?(input: Record<string, string>): Promise<ConnectedAccount[]>
   /** Renova o access token. Sem implementação = o canal precisa ser reconectado quando vencer. */
   refresh?(creds: Credentials, channel: ChannelCtx): Promise<{ credentials: Credentials; expiresAt: Date | null }>
   /** Valida o post antes de aceitar (mensagem de erro em português) ou null se estiver ok. */

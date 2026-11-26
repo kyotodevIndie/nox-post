@@ -2,13 +2,13 @@ import { randomBytes } from 'node:crypto'
 import { withTx, type Db, type Pool } from '../lib/db'
 import { AppError, ProviderError } from '../lib/errors'
 import { enabledProviders, getProvider } from '../providers'
-import type { ChannelCtx, Credentials, Provider } from '../providers/types'
+import type { ChannelCtx, ConnectedAccount, Credentials, Provider } from '../providers/types'
 import { openJson, sealJson } from '../security/secretBox'
 import { emit } from './events'
 import { channelView } from './views'
 
-// Conexão de canais pelo OAuth das redes e renovação de tokens.
-// O callback de cada rede é PUBLIC_URL/oauth/<rede>/callback (cadastre esse endereço no app da rede).
+// Conexão de canais (OAuth das redes ou credenciais informadas pelo tenant) e renovação de tokens.
+// O callback de cada rede OAuth é PUBLIC_URL/oauth/<rede>/callback (cadastre esse endereço no app da rede).
 
 const STATE_TTL_MIN = 60
 /** Renova o token quando faltar menos que isso para vencer. */
@@ -25,6 +25,7 @@ function enabledProvider(network: string): Provider {
 
 export async function startConnect(db: Db, tenantId: string, p: { network: string; returnUrl?: string; ref?: string }): Promise<{ url: string; state: string }> {
   const provider = enabledProvider(p.network)
+  if (!provider.authUrl) throw new AppError(400, 'CREDENTIALS_REQUIRED', `${p.network} conecta por credenciais: mande credentials { ${provider.credentialFields?.join(', ')} }`)
   const state = randomBytes(24).toString('base64url')
   const { url, codeVerifier } = provider.authUrl({ state, redirectUri: redirectUriFor(p.network) })
   await db.query('DELETE FROM oauth_states WHERE created_at < now() - make_interval(mins => $1)', [STATE_TTL_MIN])
@@ -51,15 +52,37 @@ export async function finishConnect(pool: Pool, network: string, q: { code?: str
   if (q.error || !q.code) return { returnUrl, channels: [], ref: st.ref, error: q.error_description || q.error || 'autorização cancelada' }
 
   const provider = enabledProvider(network)
+  if (!provider.connect) throw new AppError(400, 'CREDENTIALS_REQUIRED', `${network} não conecta por OAuth`)
   let accounts
   try {
-    accounts = await provider.connect({ code: q.code, codeVerifier: st.code_verifier ?? undefined, redirectUri: redirectUriFor(network) })
+    accounts = await provider.connect({ code: q.code, codeVerifier: st.code_verifier ?? undefined, redirectUri: redirectUriFor(network), query: q as Record<string, string> })
   } catch (e) {
     if (e instanceof ProviderError) return { returnUrl, channels: [], ref: st.ref, error: e.message }
     throw e
   }
+  const channels = await saveAccounts(pool, st.tenant_id, network, st.ref, accounts)
+  return { returnUrl, channels, ref: st.ref }
+}
 
-  const channels = await withTx(pool, async (c) => {
+/** Conexão por credenciais (token, instância, senha de app): valida na rede e grava na hora, sem redirecionamento. */
+export async function connectWithCredentials(pool: Pool, tenantId: string, p: { network: string; credentials: Record<string, string>; ref?: string }) {
+  const provider = enabledProvider(p.network)
+  if (!provider.connectWith) throw new AppError(400, 'OAUTH_REQUIRED', `${p.network} conecta por OAuth: chame sem credentials e mande a pessoa para a url`)
+  const missing = (provider.credentialFields ?? []).filter((f) => !f.endsWith('?') && !p.credentials[f])
+  if (missing.length) throw new AppError(422, 'CREDENTIALS_INVALID', `faltam campos em credentials: ${missing.join(', ')}`)
+  let accounts
+  try {
+    accounts = await provider.connectWith(p.credentials)
+  } catch (e) {
+    if (e instanceof ProviderError) throw new AppError(422, 'CREDENTIALS_INVALID', e.message)
+    throw e
+  }
+  return saveAccounts(pool, tenantId, p.network, p.ref ?? null, accounts)
+}
+
+/** Grava/atualiza um canal por conta devolvida pela rede e avisa o tenant. */
+async function saveAccounts(pool: Pool, tenantId: string, network: string, ref: string | null, accounts: ConnectedAccount[]) {
+  return withTx(pool, async (c) => {
     const out = []
     for (const a of accounts) {
       const row = (await c.query(
@@ -70,15 +93,14 @@ export async function finishConnect(pool: Pool, network: string, q: { code?: str
            expires_at = EXCLUDED.expires_at, meta = EXCLUDED.meta, ref = COALESCE(EXCLUDED.ref, channels.ref),
            status = 'active', last_error = NULL, updated_at = now()
          RETURNING *`,
-        [st.tenant_id, network, a.externalId, a.name, a.username ?? null, a.picture ?? null, sealJson(a.credentials),
-          a.expiresAt, JSON.stringify(a.meta ?? {}), st.ref],
+        [tenantId, network, a.externalId, a.name, a.username ?? null, a.picture ?? null, sealJson(a.credentials),
+          a.expiresAt, JSON.stringify(a.meta ?? {}), ref],
       )).rows[0]
       out.push(channelView(row))
     }
-    await emit(c, st.tenant_id, 'channel.connected', { network, ref: st.ref, channels: out })
+    await emit(c, tenantId, 'channel.connected', { network, ref, channels: out })
     return out
   })
-  return { returnUrl, channels, ref: st.ref }
 }
 
 export const channelCtx = (row: any): ChannelCtx => ({ externalId: row.external_id, name: row.name, username: row.username, meta: row.meta ?? {} })
