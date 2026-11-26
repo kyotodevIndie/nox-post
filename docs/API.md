@@ -8,7 +8,16 @@ Toda rota `/v1` exige `Authorization: Bearer pnox_...`.
 
 ## 1. Redes
 
-`GET /v1/networks` lista as redes ligadas no servidor (as que têm credenciais).
+`GET /v1/networks` lista as redes ligadas no servidor: as de OAuth aparecem quando o app da rede está configurado;
+as de credenciais aparecem sempre. Cada item traz `connect` (`oauth` ou `credentials`) e, nas de credenciais,
+`credentialFields` (campo com `?` no fim é opcional).
+
+```json
+{ "networks": [{ "network": "x", "label": "X", "connect": "oauth" },
+  { "network": "bluesky", "label": "Bluesky", "connect": "credentials", "credentialFields": ["identifier", "appPassword", "service?"] }] }
+```
+
+Redes por OAuth:
 
 | network | O que publica | Observações |
 |---|---|---|
@@ -18,6 +27,35 @@ Toda rota `/v1` exige `Authorization: Bearer pnox_...`.
 | `linkedin-page` | texto, imagens, um vídeo | páginas que a pessoa administra; exige o produto Community Management API no app |
 | `youtube` | um vídeo (Shorts se for vertical e curto) | `settings.title` obrigatório |
 | `tiktok` | um vídeo | sem auditoria do app, só `SELF_ONLY` |
+| `x` | texto (280), até 4 imagens | sem vídeo por enquanto; a API do X é paga por uso |
+| `threads` | texto (500), imagem, vídeo, carrossel (até 20) | app da Threads API (separado do Facebook) |
+| `pinterest` | pin de imagem (1 a 5) | `settings.board` obrigatório; sem vídeo |
+| `reddit` | post de texto ou de link | `settings.subreddit` e `settings.title` obrigatórios; sem mídia |
+| `gmb` | novidade com até 1 foto e botão | Google Business Profile; uma conexão traz todos os locais |
+| `dribbble` | shot com 1 imagem | `settings.title` obrigatório; tamanhos de imagem fixos do Dribbble |
+| `tumblr` | texto e até 10 imagens | uma conexão traz todos os blogs |
+| `slack` | texto e imagens | o canal é escolhido na tela do Slack (webhook) |
+| `vk` | texto e até 10 imagens no mural | `settings.group_id` posta numa comunidade |
+| `kick` | mensagem no chat do canal (500) | só texto |
+| `twitch` | mensagem no chat do canal (500) | só texto |
+
+Redes por credenciais (o tenant manda os dados, a API confere na rede e grava cifrado):
+
+| network | credentials | O que publica |
+|---|---|---|
+| `discord` | `webhookUrl` (Canal → Integrações → Webhooks) | texto (2.000), imagens como embed, vídeo como link |
+| `telegram` | `botToken` (@BotFather), `chatId` (`@canal` ou id; o bot precisa ser admin) | texto (4.096), foto, vídeo, álbum (até 10, legenda 1.024) |
+| `mastodon` | `instance`, `accessToken` (Preferências → Desenvolvimento; escopos `read:accounts write:statuses write:media`) | texto (500), até 4 mídias |
+| `bluesky` | `identifier` (handle ou e-mail), `appPassword` (senha de app), `service?` (padrão `https://bsky.social`) | texto (300), até 4 imagens; links clicáveis |
+| `lemmy` | `instance`, `username`, `password` (sem 2FA) | post em comunidade; `settings.community` e `settings.title` obrigatórios |
+| `farcaster` | `apiKey` e `signerUuid` do Neynar (signer aprovado) | cast (1.024 bytes), até 2 mídias como embed |
+| `nostr` | `privateKey` (`nsec...` ou hex), `relays?` (wss://, separados por vírgula) | nota kind 1; mídia vira URL no texto |
+| `devto` | `apiKey` | artigo em Markdown; `settings.title` obrigatório |
+| `medium` | `token` (só quem já tem: o Medium não emite tokens novos) | artigo em Markdown; `settings.title` obrigatório |
+| `hashnode` | `token` (Personal Access Token) | artigo em Markdown; uma conexão traz todos os blogs |
+| `wordpress` | `site`, `username`, `appPassword` (senha de aplicação, WordPress 5.6+) | post em HTML; a 1ª imagem vira destaque |
+
+Endereços de instância (`instance`, `site`, `service`) precisam ser HTTPS.
 
 ## 2. Conectar canais
 
@@ -36,6 +74,18 @@ Mande a pessoa para `url`. Depois de autorizar, a rede volta para a API, que gra
 Sem URL de retorno, a API mostra uma página simples de "Conta conectada". O link vale 1 hora e é de uso único.
 `ref` é livre (ex.: id da persona) e fica gravado no canal. Reconectar a mesma conta atualiza o canal existente.
 
+Redes por credenciais conectam na hora, sem redirecionamento:
+
+```http
+POST /v1/channels/connect
+{ "network": "telegram", "credentials": { "botToken": "123456:ABC...", "chatId": "@meucanal" }, "ref": "persona-42" }
+→ 201 { "channels": [{ "id": "uuid", "network": "telegram", ... }] }
+```
+
+Credencial recusada pela rede ou campo faltando: `422 CREDENTIALS_INVALID` com a mensagem. Mandar `credentials`
+para uma rede de OAuth dá `400 OAUTH_REQUIRED`; chamar sem `credentials` uma rede de credenciais dá
+`400 CREDENTIALS_REQUIRED`. O webhook `channel.connected` sai igual nos dois caminhos.
+
 | Rota | O que faz |
 |---|---|
 | `GET /v1/channels?network=&ref=&status=` | lista (sem os desconectados) |
@@ -50,11 +100,13 @@ Sem URL de retorno, a API mostra uma página simples de "Conta conectada". O lin
 ```
 
 `status`: `active`, `needs_reauth` (token vencido ou revogado: chame o connect de novo) ou `disabled`.
-A API renova sozinha os tokens que têm refresh (LinkedIn, YouTube, TikTok).
+A API renova sozinha os tokens que têm refresh (LinkedIn, YouTube, TikTok, X, Threads, Pinterest, Reddit,
+Google Business, Tumblr, VK, Kick, Twitch). Nas redes por credenciais, credencial revogada deixa o canal em `needs_reauth`:
+mande as credenciais de novo.
 
 ## 3. Mídia
 
-A Meta baixa a mídia pela URL, então ela precisa ser pública. Use URLs suas (CDN, S3) ou envie para a API:
+A Meta (e Threads, Pinterest, Google Business, Tumblr, Slack, Discord, Telegram) baixa a mídia pela URL, então ela precisa ser pública. Use URLs suas (CDN, S3) ou envie para a API:
 
 ```http
 PUT /v1/media?filename=video.mp4
@@ -93,7 +145,21 @@ POST /v1/posts
 | instagram | `post_type`: `post` (padrão) ou `story`. Um vídeo sozinho vira Reels. `media[].thumbnail` vira a capa do Reels |
 | youtube | `title` (obrigatório, até 100), `privacy` (`public` padrão, `unlisted`, `private`), `tags` (lista), `categoryId` (padrão `22`), `madeForKids` |
 | tiktok | `privacy_level` (padrão `SELF_ONLY`; `PUBLIC_TO_EVERYONE`, `MUTUAL_FOLLOW_FRIENDS`, `FOLLOWER_OF_CREATOR`), `disable_comment`, `disable_duet`, `disable_stitch`, `brand_content_toggle`, `brand_organic_toggle`, `is_aigc` |
-| linkedin, linkedin-page | nenhum |
+| linkedin, linkedin-page, x, threads, kick, twitch | nenhum |
+| pinterest | `board` (obrigatório: id ou nome da pasta), `title` (até 100), `link` |
+| reddit | `subreddit` e `title` (obrigatórios), `url` (vira post de link), `flair_id`, `nsfw` |
+| gmb | `cta_type` (`BOOK`, `ORDER`, `SHOP`, `LEARN_MORE`, `SIGN_UP`, `CALL`), `cta_url`, `language` (padrão `pt-BR`) |
+| dribbble | `title` (obrigatório), `tags` (lista) |
+| tumblr | `tags` (lista) |
+| vk | `group_id` (posta no mural da comunidade) |
+| discord | `username`, `avatar_url` (sobrescrevem os do webhook) |
+| telegram | `parse_mode` (`HTML` ou `MarkdownV2`), `disable_notification` |
+| mastodon | `visibility` (`public` padrão, `unlisted`, `private`, `direct`), `spoiler_text`, `language` |
+| bluesky | `langs` (ex.: `["pt"]`) |
+| lemmy | `community` e `title` (obrigatórios), `url` (padrão: a 1ª mídia), `nsfw` |
+| farcaster | `channel` (id do canal, ex.: `dev`) |
+| nostr | `hashtags` (lista) |
+| devto, medium, hashnode, wordpress | `title` (obrigatório), `tags` (lista), `canonical_url`, `draft`; devto: `series`, `organization_id`; wordpress: `status`, `excerpt` |
 
 Ciclo de vida: `scheduled` → `publishing` → (`processing`) → `published` ou `failed`. `cancelled` se cancelado.
 
@@ -144,9 +210,9 @@ e responda 2xx em até 10 s. Falhou: nova tentativa com espera de 30 s, 1 min, 2
 { "error": { "code": "POST_INVALID", "message": "Instagram: precisa de pelo menos uma imagem ou vídeo" } }
 ```
 
-`400 VALIDATION` (com `details.issues`), `401 UNAUTHORIZED`, `404 *_NOT_FOUND`, `409 POST_NOT_EDITABLE` /
+`400 VALIDATION` (com `details.issues`), `400 OAUTH_REQUIRED` / `CREDENTIALS_REQUIRED`, `401 UNAUTHORIZED`, `404 *_NOT_FOUND`, `409 POST_NOT_EDITABLE` /
 `POST_NOT_CANCELLABLE` / `POST_NOT_RETRYABLE` / `CHANNEL_DISABLED`, `413 MEDIA_TOO_LARGE`, `415 MEDIA_TYPE_UNSUPPORTED`,
-`422 POST_INVALID`.
+`422 POST_INVALID`, `422 CREDENTIALS_INVALID`.
 
 ## 7. Admin
 

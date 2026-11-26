@@ -13,5 +13,9 @@ Partes do código são adaptadas do Postiz (https://github.com/gitroomhq/postiz-
 - src/providers/tiktok.ts    ← tiktok.provider.ts (OAuth, plano de partes, status, leitura do id int64)
 - src/providers/http.ts      ← social.abstract.ts (fetch com retentativa e classificação de erros)
 
+Os providers das demais redes (x, threads, pinterest, reddit, gmb, dribbble, tumblr, slack, vk, kick, twitch,
+discord, telegram, mastodon, bluesky, lemmy, farcaster, nostr e blogs.ts) foram escritos do zero a partir da
+documentação pública de cada rede, sem código do Postiz.
+
 As adaptações removem NestJS, Prisma e Temporal, trocam o fluxo de workflow por uma fila no Postgres e
 mudam a interface dos providers. O histórico do git registra cada mudança.

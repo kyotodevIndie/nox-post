@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "license": "AGPL-3.0-only",
-  "description": "API de publicação em redes sociais (Instagram, Facebook, LinkedIn, YouTube, TikTok) para os SaaS da Nox. Providers adaptados do Postiz.",
+  "description": "API de publicação em redes sociais (Instagram, Facebook, LinkedIn, YouTube, TikTok, X, Threads, Bluesky, Telegram e mais 19) para os SaaS da Nox.",
   "type": "module",
   "engines": { "node": ">=22" },
   "packageManager": "pnpm@11.22.0",
@@ -19,6 +19,7 @@
   "dependencies": {
     "@fastify/helmet": "^13.2.0",
     "@fastify/rate-limit": "^11.2.1",
+    "@noble/curves": "^2.4.0",
     "dotenv": "^16.4.5",
     "fastify": "^5.12.7",
     "pg": "^8.11.5",

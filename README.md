@@ -7,8 +7,10 @@
 
 # nox-post
 
-API que publica e agenda posts no **Instagram, Facebook, LinkedIn (perfil e página), YouTube e TikTok**. É só a API:
-os apps conectam os canais dos clientes e mandam os posts por aqui.
+API que publica e agenda posts no **Instagram, Facebook, LinkedIn (perfil e página), YouTube, TikTok, X, Threads,
+Pinterest, Reddit, Google Business Profile, Dribbble, Tumblr, Slack, Discord, Telegram, Mastodon, Bluesky, Lemmy,
+Farcaster, Nostr, VK, Kick, Twitch, DEV, Medium, Hashnode e WordPress**. É só a API: os apps conectam os canais dos
+clientes e mandam os posts por aqui.
 
 As integrações com as redes são adaptadas do [Postiz](https://github.com/gitroomhq/postiz-app) (AGPL-3.0), sem
 NestJS, Prisma, Temporal, Redis ou Elasticsearch: um processo Node (Fastify) e um Postgres, rodando com ~200 MB.
@@ -36,7 +38,8 @@ Testes: `pnpm test` (unidade) e `pnpm test:pg` (fluxo completo no Postgres local
 
 ## Como funciona
 
-- **Canais:** `POST /v1/channels/connect` devolve o link de autorização da rede. O retorno cai em
+- **Canais:** `POST /v1/channels/connect` devolve o link de autorização da rede (ou, nas redes por credenciais como
+  Telegram, Bluesky e Mastodon, recebe o token e grava na hora). O retorno cai em
   `PUBLIC_URL/oauth/<rede>/callback`, a API grava um canal por conta (página, perfil, canal) com o token cifrado
   (AES-256-GCM com `SECRETS_KEY`) e redireciona para o app.
 - **Posts:** `POST /v1/posts` agenda. Um worker no próprio processo pega os vencidos a cada 5 s
@@ -56,10 +59,10 @@ migrations/    SQL
 deploy/        produção na VPS
 ```
 
-**Adicionar uma rede:** crie `src/providers/<rede>.ts` implementando `Provider` (`authUrl`, `connect`, `publish` e,
-se tiver processamento assíncrono, `check`; `refresh` se o token vencer), inclua o nome em `Network` e registre em
-`src/providers/index.ts`. O Postiz tem mais 30 providers que servem de base (X, Threads, Pinterest, Bluesky,
-Telegram, Reddit...).
+**Adicionar uma rede:** crie `src/providers/<rede>.ts` implementando `Provider` (`authUrl` e `connect` para OAuth, ou
+`credentialFields` e `connectWith` para token/instância; `validate`, `publish` e, se tiver processamento assíncrono,
+`check`; `refresh` se o token vencer), inclua o nome em `Network` e registre em `src/providers/index.ts`. OAuth no
+padrão usa os auxiliares de `oauth.ts` e as validações comuns ficam em `rules.ts`.
 
 ## Apps das redes
 
@@ -71,6 +74,20 @@ O endereço de retorno de cada rede é `PUBLIC_URL/oauth/<network>/callback`. Em
 | LinkedIn | [linkedin.com/developers](https://www.linkedin.com/developers/apps) → produtos *Share on LinkedIn* e *Sign In with LinkedIn using OpenID Connect*; para páginas, *Community Management API* (pede aprovação) | `/oauth/linkedin/callback` e `/oauth/linkedin-page/callback` | `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET` |
 | YouTube | [console.cloud.google.com](https://console.cloud.google.com) → ativar *YouTube Data API v3*, tela de consentimento, credencial *Aplicativo da Web* | `/oauth/youtube/callback` | `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET` |
 | TikTok | [developers.tiktok.com](https://developers.tiktok.com) → *Login Kit* + *Content Posting API* (Direct Post) | `/oauth/tiktok/callback` | `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET` |
+| X | [developer.x.com](https://developer.x.com) → app com OAuth 2.0, tipo *Web App* (confidencial), permissão *Read and write* | `/oauth/x/callback` | `X_CLIENT_ID`, `X_CLIENT_SECRET` |
+| Threads | [developers.facebook.com](https://developers.facebook.com/apps) → caso de uso *Acessar a API do Threads* (`threads_basic`, `threads_content_publish`) | `/oauth/threads/callback` | `THREADS_APP_ID`, `THREADS_APP_SECRET` |
+| Pinterest | [developers.pinterest.com](https://developers.pinterest.com/apps) (acesso *Standard* para publicar fora do modo de teste) | `/oauth/pinterest/callback` | `PINTEREST_CLIENT_ID`, `PINTEREST_CLIENT_SECRET` |
+| Reddit | [reddit.com/prefs/apps](https://www.reddit.com/prefs/apps) → app do tipo *web app* | `/oauth/reddit/callback` | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` |
+| Google Business Profile | [console.cloud.google.com](https://console.cloud.google.com) → pedir acesso à *Business Profile API*, ativar *My Business Account Management*, *Business Information* e *Google My Business API* | `/oauth/gmb/callback` | `GMB_CLIENT_ID`, `GMB_CLIENT_SECRET` |
+| Dribbble | [dribbble.com/account/applications](https://dribbble.com/account/applications) | `/oauth/dribbble/callback` | `DRIBBBLE_CLIENT_ID`, `DRIBBBLE_CLIENT_SECRET` |
+| Tumblr | [tumblr.com/oauth/apps](https://www.tumblr.com/oauth/apps) | `/oauth/tumblr/callback` | `TUMBLR_CLIENT_ID`, `TUMBLR_CLIENT_SECRET` |
+| Slack | [api.slack.com/apps](https://api.slack.com/apps) → *OAuth & Permissions*, escopo `incoming-webhook`, distribuição pública | `/oauth/slack/callback` | `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET` |
+| VK | [id.vk.com/about/business](https://id.vk.com/about/business/go) → app Web com acesso a `wall` e `photos` | `/oauth/vk/callback` | `VK_CLIENT_ID` |
+| Kick | [kick.com/settings/developer](https://kick.com/settings/developer) | `/oauth/kick/callback` | `KICK_CLIENT_ID`, `KICK_CLIENT_SECRET` |
+| Twitch | [dev.twitch.tv/console](https://dev.twitch.tv/console/apps) | `/oauth/twitch/callback` | `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET` |
+
+Discord, Telegram, Mastodon, Bluesky, Lemmy, Farcaster, Nostr, DEV, Medium, Hashnode e WordPress não pedem app no
+servidor: cada conta entra com o próprio token (veja a tabela de credenciais em [docs/API.md](docs/API.md)).
 
 ### Troca de domínio
 

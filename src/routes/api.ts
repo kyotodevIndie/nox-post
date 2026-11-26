@@ -4,7 +4,7 @@ import { UUID_RE } from '../lib/db'
 import { AppError } from '../lib/errors'
 import { requireTenant } from '../middlewares'
 import { enabledProviders } from '../providers'
-import { startConnect } from '../services/channels'
+import { connectWithCredentials, startConnect } from '../services/channels'
 import { deleteMedia, saveMedia } from '../services/media'
 import { cancelPost, createPost, createPostSchema, getPost, listPosts, retryPost, updatePost, updatePostSchema } from '../services/posts'
 import { channelView, postView } from '../services/views'
@@ -21,6 +21,8 @@ const connectSchema = z.object({
   network: z.string().min(1).max(40),
   returnUrl: z.url().max(2000).optional(),
   ref: z.string().max(200).optional(),
+  /** Redes que conectam por credenciais (veja `credentialFields` em /v1/networks). */
+  credentials: z.record(z.string(), z.string().max(4000)).optional(),
 })
 
 const listPostsSchema = z.object({
@@ -34,12 +36,19 @@ export default async function apiRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireTenant)
 
   app.get('/v1/networks', async () => ({
-    networks: enabledProviders().map((p) => ({ network: p.network, label: p.label })),
+    networks: enabledProviders().map((p) => ({
+      network: p.network, label: p.label, connect: p.connectWith ? 'credentials' : 'oauth',
+      ...(p.credentialFields && { credentialFields: p.credentialFields }),
+    })),
   }))
 
   // ---- canais
-  app.post('/v1/channels/connect', async (req) => {
+  app.post('/v1/channels/connect', async (req, reply) => {
     const body = connectSchema.parse(req.body ?? {})
+    if (body.credentials) {
+      const channels = await connectWithCredentials(app.db, req.tenant.id, { network: body.network, credentials: body.credentials, ref: body.ref })
+      return reply.status(201).send({ channels })
+    }
     const { url } = await startConnect(app.db, req.tenant.id, body)
     return { url }
   })
