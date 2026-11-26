@@ -51,6 +51,20 @@ const fake: Provider = {
   },
 }
 
+// Rede por credenciais (como Telegram/Bluesky): connectWith no lugar do OAuth.
+const fakeCreds: Provider = {
+  network: 'telegram',
+  label: 'Falso por token',
+  requiredEnv: [],
+  credentialFields: ['token', 'extra?'],
+  async connectWith({ token }) {
+    if (token === 'ruim') throw new ProviderError('reauth', 'token recusado pela rede')
+    return [{ externalId: 'chat1', name: 'Canal', credentials: { accessToken: token }, expiresAt: null }]
+  },
+  validate: () => null,
+  async publish(_c, creds) { return { status: 'published', remoteId: `T-${creds.accessToken}`, remoteUrl: null } },
+}
+
 let pool: pg.Pool
 let app: Awaited<ReturnType<typeof buildApp>>
 let apiKey: string
@@ -62,7 +76,7 @@ beforeAll(async () => {
   process.env.SECRETS_KEY ??= 'test-0123456789abcdef0123456789abcdef'
   process.env.PUBLIC_URL = 'https://api.test'
   process.env.MEDIA_DIR = mkdtempSync(join(tmpdir(), 'nox-post-media-'))
-  setProviders([fake])
+  setProviders([fake, fakeCreds])
   pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
   app = await buildApp({ pool, logger: false })
 })
@@ -118,6 +132,33 @@ describe('fluxo completo', () => {
     }
     const ev = (await pool.query(`SELECT type FROM outbound_events`)).rows
     expect(ev.map((e) => e.type)).toEqual(['channel.connected'])
+  })
+
+  it('conecta por credenciais, grava cifrado e publica', async () => {
+    const go = (payload: any) => app.inject({ method: 'POST', url: '/v1/channels/connect', headers: auth(), payload })
+    expect((await go({ network: 'telegram' })).json().error.code).toBe('CREDENTIALS_REQUIRED')
+    expect((await go({ network: 'facebook', credentials: { token: 'x' } })).json().error.code).toBe('OAUTH_REQUIRED')
+    const missing = await go({ network: 'telegram', credentials: { extra: 'x' } })
+    expect([missing.statusCode, missing.json().error.message]).toEqual([422, 'faltam campos em credentials: token'])
+    const refused = await go({ network: 'telegram', credentials: { token: 'ruim' } })
+    expect([refused.statusCode, refused.json().error.code]).toEqual([422, 'CREDENTIALS_INVALID'])
+
+    const ok = await go({ network: 'telegram', credentials: { token: 'segredo-123' }, ref: 'persona-9' })
+    expect(ok.statusCode).toBe(201)
+    const [ch] = ok.json().channels
+    expect(ch).toMatchObject({ network: 'telegram', name: 'Canal', ref: 'persona-9', status: 'active' })
+    const row = (await pool.query('SELECT credentials_enc FROM channels WHERE id = $1', [ch.id])).rows[0]
+    expect(row.credentials_enc).not.toContain('segredo-123')
+
+    const nets = (await app.inject({ method: 'GET', url: '/v1/networks', headers: auth() })).json().networks
+    expect(nets.find((n: any) => n.network === 'telegram')).toEqual({ network: 'telegram', label: 'Falso por token', connect: 'credentials', credentialFields: ['token', 'extra?'] })
+    expect(nets.find((n: any) => n.network === 'facebook').connect).toBe('oauth')
+
+    const post = await app.inject({ method: 'POST', url: '/v1/posts', headers: auth(), payload: { channelId: ch.id, text: 'oi' } })
+    expect(await publishDue(pool as any, log)).toBe(1)
+    const done = (await app.inject({ method: 'GET', url: `/v1/posts/${post.json().post.id}`, headers: auth() })).json().post
+    expect(done).toMatchObject({ status: 'published', remoteId: 'T-segredo-123' })
+    expect((await pool.query(`SELECT type FROM outbound_events ORDER BY created_at`)).rows.map((e) => e.type)).toEqual(['channel.connected', 'post.published'])
   })
 
   it('publica na hora, emite post.published e entrega o webhook assinado', async () => {
