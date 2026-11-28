@@ -63,6 +63,11 @@ describe('validações', () => {
     expect(youtube.validate(p({ media: [vid], settings: { title: 'Vídeo' } }))).toBeNull()
     expect(youtube.validate(p({ media: [img], settings: { title: 'x' } }))).toMatch(/um vídeo/)
   })
+  it('tiktok sempre mostra a tela de autorização (dá para trocar de conta)', () => {
+    process.env.TIKTOK_CLIENT_KEY ??= 'tk'
+    const { url } = tiktok.authUrl!({ state: 's', redirectUri: 'https://api.test/oauth/tiktok/callback' })
+    expect(new URL(url).searchParams.get('disable_auto_auth')).toBe('1')
+  })
   it('tiktok exige um vídeo', () => {
     expect(tiktok.validate(p({ media: [vid] }))).toBeNull()
     expect(tiktok.validate(p({ media: [img] }))).toMatch(/um vídeo/)

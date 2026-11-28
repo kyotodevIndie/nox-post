@@ -44,7 +44,11 @@ export const tiktok: Provider = {
 
   authUrl({ state, redirectUri }) {
     const url = new URL('https://www.tiktok.com/v2/auth/authorize/')
-    url.search = form({ client_key: env('TIKTOK_CLIENT_KEY'), redirect_uri: redirectUri, state, response_type: 'code', scope: SCOPES.join(',') }).toString()
+    // disable_auto_auth=1: sempre mostra a tela de autorização. Sem isso, com sessão aberta no navegador o TikTok aprova
+    // sozinho e reconectar cai na mesma conta, sem chance de escolher outra.
+    url.search = form({
+      client_key: env('TIKTOK_CLIENT_KEY'), redirect_uri: redirectUri, state, response_type: 'code', scope: SCOPES.join(','), disable_auto_auth: '1',
+    }).toString()
     return { url: url.toString() }
   },
 
